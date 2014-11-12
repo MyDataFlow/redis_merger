@@ -77,5 +77,32 @@ func (redis *FakeRedis) LoopRead() {
 		}
 	}
 
+}
 
+func (redis *FakeRedis) WaitChannelToConn(ch chan *RedisCommand) {
+	for {
+		cmd := <- ch
+		if cmd.respType != ErrorResp && cmd.respType != OtherResp {
+			if cmd.lastCRLF {
+				log.Printf("Write command: %s",cmd.raw)
+				_,err := redis.upstreamConn.Write(cmd.raw)
+				if err != nil {
+					log.Printf("Write Error: %s",err)
+				}
+			}
+		}
+	}
+}
+
+func (redis *FakeRedis) WaitConnToChannel(ch chan *RedisCommand) {
+	defer redis.upstreamConn.Close()
+	for {
+		resp, err := ParseCommand(redis.upstreamReader)
+
+		if err != nil {
+			log.Printf("Error while reading from master: %v\n", err)
+			return
+		}
+		ch <- resp
+	}
 }

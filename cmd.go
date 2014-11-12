@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 )
 
 const (
@@ -19,19 +18,21 @@ const (
 
 type RedisCommand struct {
 	respType int 
+	lastCRLF bool
 	raw []byte
 	bulkSize int64
+
 }
 
 func ReadLine(reader *bufio.Reader) (line []byte,err error) {
 	line, err = reader.ReadBytes('\n')
 	lineSize := len(line)
 	if lineSize < 2 || line[lineSize-2] != '\r' { 
-		log.Printf("invalid redis packet %s, err:%v", line, err)
 		return nil, fmt.Errorf("invalid redis packet %s, err:%v", line, err)
 	}
 	return
 }
+
 
 func ByteToInt(b []byte) (n int64, err error) {
 	n = 0
@@ -120,6 +121,7 @@ func ParseCommand(reader *bufio.Reader) (resp *RedisCommand,err error) {
 func NewRedisCommand() (command* RedisCommand) {
 	command = &RedisCommand {
 		respType: NoneResp,
+		lastCRLF: true,
 		raw: nil,
 		bulkSize: 0,
 	}
@@ -142,6 +144,23 @@ func (command *RedisCommand) ReadBulk(reader *bufio.Reader ) (err error) {
 	}
 
 	command.raw = append(command.raw, buf...)
+	
+	//Try to reade one character in buffer to find out if it is CRLF
+	c,err := reader.Peek(1)
+	if  c[0] != '\r' {
+		command.lastCRLF = false
+		return nil
+	}
+
+	//Don`t forget to read \r\n
+	line, err := ReadLine(reader)
+
+	if err != nil {
+		return err
+	}
+
+	command.raw = append(command.raw, line...)
 
 	return nil
 }
+
