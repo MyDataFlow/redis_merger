@@ -14,9 +14,9 @@ const (
 
 type FakeRedis struct {
 	gid            int
-	host					 string
+	host		   string
 	port           int
-	upstreamReader         *bufio.Reader
+	upstreamReader *bufio.Reader
 	persistentFile *os.File
 	upstreamConn 	net.Conn
 
