@@ -12,6 +12,11 @@ const (
 	BUFF_SIZE       = 16384
 )
 
+var (
+	SYNC_CMD = []byte("SYNC\r\n")
+	PING_CMD = []byte("PING\r\n")
+)
+
 type FakeRedis struct {
 	gid            int
 	host		   string
@@ -55,16 +60,21 @@ func (redis *FakeRedis) Write(cmd []byte) (err error) {
 }
 
 func (redis *FakeRedis) LoopRead() {
+	redis.Write(SYNC_CMD)
 	defer redis.upstreamConn.Close()
 	for {
-		resp, err := redis.upstreamReader.ReadString('\n')
+		resp, err := ParseCommand(redis.upstreamReader)
 
 		if err != nil {
 			log.Printf("Error while reading from master: %v\n", err)
 			return
 		}
-
-		log.Printf("Result is: %v\n",resp)
+		if resp.respType == ErrorResp || resp.respType == OtherResp {
+			log.Printf("Error or Other: %s",resp.raw)
+		} else { 
+			log.Printf("Read from master: %v",resp.bulkSize)
+			log.Printf("Read from master: %s",resp.raw)
+		}
 	}
 
 
