@@ -23,7 +23,7 @@ type FakeRedis struct {
 	port           int
 	upstreamReader *bufio.Reader
 	persistentFile *os.File
-	upstreamConn 	net.Conn
+	upstreamConn 	 net.Conn
 
 }
 
@@ -50,6 +50,7 @@ func (redis *FakeRedis) Connect() (err error){
 	return 
 }
 
+
 func (redis *FakeRedis) Write(cmd []byte) (err error) {
 	_, err = redis.upstreamConn.Write(cmd)
 	if err != nil {
@@ -59,37 +60,39 @@ func (redis *FakeRedis) Write(cmd []byte) (err error) {
 	return
 }
 
-func (redis *FakeRedis) LoopRead() {
-	redis.Write(SYNC_CMD)
-	defer redis.upstreamConn.Close()
-	for {
-		resp, err := ParseCommand(redis.upstreamReader)
-
-		if err != nil {
-			log.Printf("Error while reading from master: %v\n", err)
-			return
-		}
-		if resp.respType == ErrorResp || resp.respType == OtherResp {
-			log.Printf("Error or Other: %s",resp.raw)
-		} else { 
-			log.Printf("Read from master: %v",resp.bulkSize)
-			log.Printf("Read from master: %s",resp.raw)
-		}
+func (redis *FakeRedis) Read() (command *RedisCommand,err error) {
+	command, err = ParseCommand(redis.upstreamReader)
+	if err != nil {
+		return nil,err
 	}
-
+	return
 }
+
+func (redis *FakeRedis) Close() (err error){
+	if redis.upstreamConn != nil {
+		err = redis.upstreamConn.Close()
+		if err != nil {
+			return err
+		}
+		redis.upstreamConn = nil
+		return nil
+	}
+	return fmt.Errorf("Already Close")
+}
+
+
 
 func (redis *FakeRedis) WaitChannelToConn(ch chan *RedisCommand) {
 	for {
 		cmd := <- ch
 		if cmd.respType != ErrorResp && cmd.respType != OtherResp {
-			if cmd.lastCRLF {
+		
 				log.Printf("Write command: %s",cmd.raw)
 				_,err := redis.upstreamConn.Write(cmd.raw)
 				if err != nil {
 					log.Printf("Write Error: %s",err)
 				}
-			}
+
 		}
 	}
 }
