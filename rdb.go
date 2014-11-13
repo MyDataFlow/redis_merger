@@ -368,7 +368,6 @@ func (rdb *RedisRDB) WaitRDBToChannel(ch chan *RedisCommand) {
 				log.Printf("%v",err)
 				return
 			}
-			log.Printf("read op: %x",op)
 			switch op {
 			case RDBOpExpirySec:
 				exp,err :=  rdb.readExpirySec()

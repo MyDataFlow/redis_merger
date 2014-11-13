@@ -86,8 +86,6 @@ func (redis *FakeRedis) WaitChannelToConn(ch chan *RedisCommand) {
 	for {
 		cmd := <- ch
 		if cmd.respType != ErrorResp && cmd.respType != OtherResp {
-		
-				log.Printf("Write command: %s",cmd.raw)
 				_,err := redis.upstreamConn.Write(cmd.raw)
 				if err != nil {
 					log.Printf("Write Error: %s",err)
@@ -99,6 +97,7 @@ func (redis *FakeRedis) WaitChannelToConn(ch chan *RedisCommand) {
 
 func (redis *FakeRedis) WaitConnToChannel(ch chan *RedisCommand) {
 	defer redis.upstreamConn.Close()
+	log.Printf("FakeReis: %v start waiting conntion\n",redis.gid)
 	for {
 		resp, err := ParseCommand(redis.upstreamReader)
 
